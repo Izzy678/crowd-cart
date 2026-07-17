@@ -1,0 +1,30 @@
+/* Hallmark · genre: playful · macrostructure: narrative-workflow · theme: hum
+ * audience: roommates/friends · use: start shared cart · tone: playful
+ * pre-emit critique: P4 H4 E4 S4 R4 V4
+ */
+
+[data-theme="hum"] {
+  --color-paper: oklch(97% 0.012 95);
+  --color-paper-2: oklch(94% 0.016 95);
+  --color-paper-3: oklch(91% 0.02 95);
+  --color-ink: oklch(20% 0.012 250);
+  --color-ink-2: oklch(35% 0.014 250);
+  --color-accent: oklch(86% 0.18 95);
+  --color-accent-deep: oklch(72% 0.16 95);
+  --color-accent-2: oklch(66% 0.18 235);
+  --color-accent-2-soft: oklch(92% 0.04 235);
+  --color-accent-3: oklch(68% 0.24 18);
+  --color-mint: oklch(80% 0.16 150);
+  --color-lavender: oklch(74% 0.16 305);
+  --color-focus: oklch(55% 0.18 235);
+  --color-success: oklch(55% 0.14 150);
+  --color-danger: oklch(55% 0.2 25);
+  --radius-card: 20px;
+  --radius-pill: 999px;
+  --radius-input: 12px;
+  --shadow-card: 0 12px 32px -16px oklch(20% 0.012 250 / 0.15);
+  --font-display: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-body: var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, monospace;
+  --ease-press: cubic-bezier(0.2, 0.7, 0.3, 1);
+}
