@@ -1,0 +1,34 @@
+# Dependencies & build
+node_modules/
+web/node_modules/
+web/.next/
+web/out/
+dist/
+*.tsbuildinfo
+
+# Env & secrets — never commit
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+id_rsa
+id_ed25519
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+contracts/.env
+
+# OS / logs / IDE
+.DS_Store
+*.log
+.idea/
+.vscode/
+*.swp
+
+# Hallmark / agent skills (local only)
+.agents/
+.hallmark/
