@@ -44,6 +44,19 @@ npm run dev
 
 Open http://localhost:3000
 
+### Deploy on Vercel (important)
+
+The Next.js app lives in **`web/`**, not the repo root. If you deploy the whole repo without setting that, you get **404: NOT_FOUND**.
+
+1. Vercel → your project → **Settings** → **General** → **Root Directory**
+2. Set Root Directory to **`web`** → Save
+3. **Settings** → **Environment Variables** (Production):
+   - `NEXT_PUBLIC_CROWDCART_ADDRESS` = `0x...`
+   - `NEXT_PUBLIC_MONAD_RPC_URL` = `https://testnet-rpc.monad.xyz`
+4. **Deployments** → Redeploy (or push a new commit)
+
+After that, `https://crowd-cart-psi.vercel.app` should load CrowdCart.
+
 ## Demo flow
 
 1. Connect wallet (Monad Testnet)
