@@ -65,6 +65,17 @@ export default function CartPage({
     query: { enabled: cartId !== null && !!address && isCrowdCartConfigured() },
   });
 
+  const { data: hasApproved, refetch: refetchApproved } = useReadContract({
+    address: crowdCartAddress,
+    abi: crowdCartAbi,
+    functionName: "hasApprovedWithdraw",
+    args:
+      cartId !== null && address
+        ? [cartId, address]
+        : undefined,
+    query: { enabled: cartId !== null && !!address && isCrowdCartConfigured() },
+  });
+
   const { writeContract, data: hash, isPending, error: writeError, reset } =
     useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
@@ -75,8 +86,9 @@ export default function CartPage({
     if (!isSuccess) return;
     refetchCart();
     refetchMine();
+    refetchApproved();
     reset();
-  }, [isSuccess, refetchCart, refetchMine, reset]);
+  }, [isSuccess, refetchCart, refetchMine, refetchApproved, reset]);
 
   const view = parseCartView(cart);
 
@@ -118,14 +130,30 @@ export default function CartPage({
     );
   }
 
-  const { organizer, target, deadline, raised, withdrawn, refundsOpen, title } =
-    view;
+  const {
+    organizer,
+    target,
+    deadline,
+    raised,
+    withdrawn,
+    refundsOpen,
+    withdrawRequested,
+    contributorCount,
+    approvalCount,
+    approvalsNeeded,
+    title,
+  } = view;
   const now = Math.floor(Date.now() / 1000);
   const pastDeadline = now > Number(deadline);
   const funded = raised >= target;
   const isOrganizer =
     !!address && address.toLowerCase() === organizer.toLowerCase();
+  const isContributor =
+    typeof myContribution === "bigint" && myContribution > 0n;
+  const alreadyApproved = Boolean(hasApproved);
+  const approvalsReady = approvalCount >= approvalsNeeded;
   const pct = progressPct(raised, target);
+  const busy = isPending || isConfirming;
 
   function run(fn: () => void) {
     setActionError(null);
@@ -172,6 +200,16 @@ export default function CartPage({
     setTimeout(() => setCopied(false), 1600);
   }
 
+  let statusText = "Open for contributions";
+  if (withdrawn) statusText = "Withdrawn by organizer";
+  else if (refundsOpen) statusText = "Refunds open";
+  else if (withdrawRequested && approvalsReady)
+    statusText = `Approvals met (${approvalCount}/${approvalsNeeded}) — ready to execute withdraw`;
+  else if (withdrawRequested)
+    statusText = `Withdraw requested — approvals ${approvalCount}/${approvalsNeeded}`;
+  else if (funded) statusText = "Target met — organizer can request withdraw";
+  else if (pastDeadline) statusText = "Deadline passed — underfunded";
+
   return (
     <div className="workbench">
       <div className="panel">
@@ -202,18 +240,14 @@ export default function CartPage({
           </div>
         </div>
 
-        <p className="muted">
-          Status:{" "}
-          {withdrawn
-            ? "Withdrawn by organizer"
-            : refundsOpen
-              ? "Refunds open"
-              : funded
-                ? "Target met — ready to withdraw"
-                : pastDeadline
-                  ? "Deadline passed — underfunded"
-                  : "Open for contributions"}
-        </p>
+        <p className="muted">Status: {statusText}</p>
+
+        {withdrawRequested && !withdrawn && (
+          <p className="muted">
+            Contributors: {contributorCount.toString()} · Majority needed:{" "}
+            {approvalsNeeded.toString()}
+          </p>
+        )}
 
         {address && (
           <p className="muted">
@@ -229,7 +263,7 @@ export default function CartPage({
         </div>
       </div>
 
-      {!withdrawn && !refundsOpen && !pastDeadline && (
+      {!withdrawn && !refundsOpen && !withdrawRequested && !pastDeadline && (
         <div className="panel">
           <h2 className="panel-title" style={{ fontSize: "1.2rem" }}>
             Contribute
@@ -246,12 +280,8 @@ export default function CartPage({
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
-            <button
-              type="submit"
-              className="btn btn--cyan"
-              disabled={isPending || isConfirming}
-            >
-              {isPending || isConfirming ? "Confirming…" : "Contribute"}
+            <button type="submit" className="btn btn--cyan" disabled={busy}>
+              {busy ? "Confirming…" : "Contribute"}
             </button>
           </form>
         </div>
@@ -262,73 +292,131 @@ export default function CartPage({
           Settle
         </h2>
         <div className="action-row">
-          {isOrganizer && funded && !withdrawn && !refundsOpen && (
+          {isOrganizer &&
+            funded &&
+            !withdrawn &&
+            !refundsOpen &&
+            !withdrawRequested && (
+              <button
+                type="button"
+                className="btn btn--pear"
+                disabled={busy}
+                onClick={() =>
+                  run(() =>
+                    writeContract({
+                      address: crowdCartAddress,
+                      abi: crowdCartAbi,
+                      functionName: "requestWithdraw",
+                      args: [cartId],
+                    }),
+                  )
+                }
+              >
+                Request withdraw
+              </button>
+            )}
+
+          {withdrawRequested &&
+            !withdrawn &&
+            !refundsOpen &&
+            isContributor &&
+            !alreadyApproved && (
+              <button
+                type="button"
+                className="btn btn--cyan"
+                disabled={busy}
+                onClick={() =>
+                  run(() =>
+                    writeContract({
+                      address: crowdCartAddress,
+                      abi: crowdCartAbi,
+                      functionName: "approveWithdraw",
+                      args: [cartId],
+                    }),
+                  )
+                }
+              >
+                Approve withdraw
+              </button>
+            )}
+
+          {withdrawRequested &&
+            !withdrawn &&
+            !refundsOpen &&
+            isContributor &&
+            alreadyApproved &&
+            !approvalsReady && (
+              <p className="muted">You approved. Waiting on more contributors.</p>
+            )}
+
+          {withdrawRequested && !withdrawn && !refundsOpen && approvalsReady && (
             <button
               type="button"
               className="btn btn--pear"
-              disabled={isPending || isConfirming}
+              disabled={busy}
               onClick={() =>
                 run(() =>
                   writeContract({
                     address: crowdCartAddress,
                     abi: crowdCartAbi,
-                    functionName: "withdraw",
+                    functionName: "executeWithdraw",
                     args: [cartId],
                   }),
                 )
               }
             >
-              Withdraw pot
+              Execute withdraw
             </button>
           )}
 
-          {!withdrawn &&
-            (refundsOpen || (pastDeadline && !funded)) && (
-              <>
-                {!refundsOpen && (
-                  <button
-                    type="button"
-                    className="btn btn--soft"
-                    disabled={isPending || isConfirming}
-                    onClick={() =>
-                      run(() =>
-                        writeContract({
-                          address: crowdCartAddress,
-                          abi: crowdCartAbi,
-                          functionName: "openRefunds",
-                          args: [cartId],
-                        }),
-                      )
-                    }
-                  >
-                    Open refunds
-                  </button>
-                )}
+          {!withdrawn && (refundsOpen || (pastDeadline && !funded)) && (
+            <>
+              {!refundsOpen && (
                 <button
                   type="button"
-                  className="btn btn--coral"
-                  disabled={isPending || isConfirming}
+                  className="btn btn--soft"
+                  disabled={busy}
                   onClick={() =>
                     run(() =>
                       writeContract({
                         address: crowdCartAddress,
                         abi: crowdCartAbi,
-                        functionName: "claimRefund",
+                        functionName: "openRefunds",
                         args: [cartId],
                       }),
                     )
                   }
                 >
-                  Claim refund
+                  Open refunds
                 </button>
-              </>
-            )}
+              )}
+              <button
+                type="button"
+                className="btn btn--coral"
+                disabled={busy}
+                onClick={() =>
+                  run(() =>
+                    writeContract({
+                      address: crowdCartAddress,
+                      abi: crowdCartAbi,
+                      functionName: "claimRefund",
+                      args: [cartId],
+                    }),
+                  )
+                }
+              >
+                Claim refund
+              </button>
+            </>
+          )}
 
           {withdrawn && (
             <p className="muted">This cart is settled — pot withdrawn.</p>
           )}
-          {!isOrganizer && funded && !withdrawn && (
-            <p className="muted">Target met. Waiting on the organizer to withdraw.</p>
+          {funded && !withdrawn && !withdrawRequested && !isOrganizer && (
+            <p className="muted">
+              Target met. Waiting for the organizer to request withdraw.
+            </p>
           )}
           {!pastDeadline && !funded && !withdrawn && (
             <p className="muted">Keep sharing until the target is met.</p>
