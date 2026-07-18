@@ -14,6 +14,10 @@ export type CartView = {
   raised: bigint;
   withdrawn: boolean;
   refundsOpen: boolean;
+  withdrawRequested: boolean;
+  contributorCount: bigint;
+  approvalCount: bigint;
+  approvalsNeeded: bigint;
   title: string;
 };
 
@@ -48,7 +52,7 @@ export function shortCartId(id: string): string {
 export function parseCartView(data: unknown): CartView | null {
   if (!data) return null;
 
-  if (Array.isArray(data) && data.length >= 7) {
+  if (Array.isArray(data) && data.length >= 11) {
     return {
       organizer: data[0] as Address,
       target: data[1] as bigint,
@@ -56,7 +60,11 @@ export function parseCartView(data: unknown): CartView | null {
       raised: data[3] as bigint,
       withdrawn: Boolean(data[4]),
       refundsOpen: Boolean(data[5]),
-      title: String(data[6]),
+      withdrawRequested: Boolean(data[6]),
+      contributorCount: data[7] as bigint,
+      approvalCount: data[8] as bigint,
+      approvalsNeeded: data[9] as bigint,
+      title: String(data[10]),
     };
   }
 
@@ -75,6 +83,10 @@ export function parseCartView(data: unknown): CartView | null {
         raised: o.raised,
         withdrawn: Boolean(o.withdrawn),
         refundsOpen: Boolean(o.refundsOpen),
+        withdrawRequested: Boolean(o.withdrawRequested),
+        contributorCount: (o.contributorCount as bigint) ?? 0n,
+        approvalCount: (o.approvalCount as bigint) ?? 0n,
+        approvalsNeeded: (o.approvalsNeeded as bigint) ?? 1n,
         title: String(o.title ?? ""),
       };
     }

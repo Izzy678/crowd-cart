@@ -1,6 +1,19 @@
 [
   {
     "type": "function",
+    "name": "approveWithdraw",
+    "inputs": [
+      {
+        "name": "cartId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "cartCount",
     "inputs": [],
     "outputs": [
@@ -93,6 +106,19 @@
   },
   {
     "type": "function",
+    "name": "executeWithdraw",
+    "inputs": [
+      {
+        "name": "cartId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "getCart",
     "inputs": [
       {
@@ -138,11 +164,55 @@
             "internalType": "bool"
           },
           {
+            "name": "withdrawRequested",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "contributorCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "approvalCount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "approvalsNeeded",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
             "name": "title",
             "type": "string",
             "internalType": "string"
           }
         ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "hasApprovedWithdraw",
+    "inputs": [
+      {
+        "name": "cartId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "contributor",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -162,7 +232,7 @@
   },
   {
     "type": "function",
-    "name": "withdraw",
+    "name": "requestWithdraw",
     "inputs": [
       {
         "name": "cartId",
@@ -281,6 +351,56 @@
   },
   {
     "type": "event",
+    "name": "WithdrawApproved",
+    "inputs": [
+      {
+        "name": "cartId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "contributor",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "approvalCount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "approvalsNeeded",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "WithdrawRequested",
+    "inputs": [
+      {
+        "name": "cartId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "organizer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "Withdrawn",
     "inputs": [
       {
@@ -306,7 +426,17 @@
   },
   {
     "type": "error",
+    "name": "AlreadyApproved",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "AlreadySettled",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ApprovalsNotMet",
     "inputs": []
   },
   {
@@ -336,6 +466,11 @@
   },
   {
     "type": "error",
+    "name": "NotContributor",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NotOrganizer",
     "inputs": []
   },
@@ -357,6 +492,16 @@
   {
     "type": "error",
     "name": "TransferFailed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "WithdrawAlreadyRequested",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "WithdrawNotRequested",
     "inputs": []
   },
   {
