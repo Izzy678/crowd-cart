@@ -2,8 +2,9 @@
 pragma solidity ^0.8.24;
 
 /// @title CrowdCart — conditional group purchases
-/// @notice Friends pool native MON toward a target. Organizer withdraws if funded;
-///         contributors claim refunds if the deadline passes underfunded.
+/// @notice Friends pool native MON toward a target. Organizer can withdraw only after
+///         a majority of contributors approve. If the deadline passes underfunded,
+///         contributors claim refunds.
 contract CrowdCart {
     struct CartView {
         address organizer;
@@ -12,6 +13,10 @@ contract CrowdCart {
         uint256 raised;
         bool withdrawn;
         bool refundsOpen;
+        bool withdrawRequested;
+        uint256 contributorCount;
+        uint256 approvalCount;
+        uint256 approvalsNeeded;
         string title;
     }
 
@@ -22,8 +27,13 @@ contract CrowdCart {
         uint256 raised;
         bool withdrawn;
         bool refundsOpen;
+        bool withdrawRequested;
+        uint256 contributorCount;
+        uint256 approvalCount;
         string title;
         mapping(address => uint256) contributions;
+        mapping(address => bool) isContributor;
+        mapping(address => bool) withdrawApproval;
     }
 
     uint256 public cartCount;
@@ -37,6 +47,8 @@ contract CrowdCart {
         string title
     );
     event Contributed(bytes32 indexed cartId, address indexed contributor, uint256 amount, uint256 raised);
+    event WithdrawRequested(bytes32 indexed cartId, address indexed organizer);
+    event WithdrawApproved(bytes32 indexed cartId, address indexed contributor, uint256 approvalCount, uint256 approvalsNeeded);
     event Withdrawn(bytes32 indexed cartId, address indexed organizer, uint256 amount);
     event RefundsOpened(bytes32 indexed cartId);
     event RefundClaimed(bytes32 indexed cartId, address indexed contributor, uint256 amount);
@@ -53,6 +65,11 @@ contract CrowdCart {
     error NothingToRefund();
     error ZeroContribution();
     error TransferFailed();
+    error WithdrawNotRequested();
+    error WithdrawAlreadyRequested();
+    error NotContributor();
+    error AlreadyApproved();
+    error ApprovalsNotMet();
 
     function createCart(string calldata title, uint256 target, uint256 deadline)
         external
@@ -79,8 +96,13 @@ contract CrowdCart {
     function contribute(bytes32 cartId) external payable {
         Cart storage cart = _getCart(cartId);
         if (msg.value == 0) revert ZeroContribution();
-        if (cart.withdrawn || cart.refundsOpen) revert AlreadySettled();
+        if (cart.withdrawn || cart.refundsOpen || cart.withdrawRequested) revert AlreadySettled();
         if (block.timestamp > cart.deadline) revert DeadlinePassed();
+
+        if (!cart.isContributor[msg.sender]) {
+            cart.isContributor[msg.sender] = true;
+            cart.contributorCount += 1;
+        }
 
         cart.contributions[msg.sender] += msg.value;
         cart.raised += msg.value;
@@ -88,11 +110,39 @@ contract CrowdCart {
         emit Contributed(cartId, msg.sender, msg.value, cart.raised);
     }
 
-    function withdraw(bytes32 cartId) external {
+    /// @notice Organizer asks to pull the pot. Contributors must approve before execute.
+    function requestWithdraw(bytes32 cartId) external {
         Cart storage cart = _getCart(cartId);
         if (msg.sender != cart.organizer) revert NotOrganizer();
         if (cart.withdrawn || cart.refundsOpen) revert AlreadySettled();
+        if (cart.withdrawRequested) revert WithdrawAlreadyRequested();
         if (cart.raised < cart.target) revert TargetNotMet();
+        if (cart.contributorCount == 0) revert ApprovalsNotMet();
+
+        cart.withdrawRequested = true;
+        emit WithdrawRequested(cartId, msg.sender);
+    }
+
+    /// @notice Contributor approves the organizer withdrawing the full pot.
+    function approveWithdraw(bytes32 cartId) external {
+        Cart storage cart = _getCart(cartId);
+        if (!cart.withdrawRequested) revert WithdrawNotRequested();
+        if (cart.withdrawn || cart.refundsOpen) revert AlreadySettled();
+        if (!cart.isContributor[msg.sender]) revert NotContributor();
+        if (cart.withdrawApproval[msg.sender]) revert AlreadyApproved();
+
+        cart.withdrawApproval[msg.sender] = true;
+        cart.approvalCount += 1;
+
+        emit WithdrawApproved(cartId, msg.sender, cart.approvalCount, _approvalsNeeded(cart.contributorCount));
+    }
+
+    /// @notice Anyone may execute once a majority of contributors have approved.
+    function executeWithdraw(bytes32 cartId) external {
+        Cart storage cart = _getCart(cartId);
+        if (!cart.withdrawRequested) revert WithdrawNotRequested();
+        if (cart.withdrawn || cart.refundsOpen) revert AlreadySettled();
+        if (cart.approvalCount < _approvalsNeeded(cart.contributorCount)) revert ApprovalsNotMet();
 
         cart.withdrawn = true;
         uint256 amount = cart.raised;
@@ -147,12 +197,25 @@ contract CrowdCart {
             raised: cart.raised,
             withdrawn: cart.withdrawn,
             refundsOpen: cart.refundsOpen,
+            withdrawRequested: cart.withdrawRequested,
+            contributorCount: cart.contributorCount,
+            approvalCount: cart.approvalCount,
+            approvalsNeeded: _approvalsNeeded(cart.contributorCount),
             title: cart.title
         });
     }
 
     function contributionOf(bytes32 cartId, address contributor) external view returns (uint256) {
         return _getCart(cartId).contributions[contributor];
+    }
+
+    function hasApprovedWithdraw(bytes32 cartId, address contributor) external view returns (bool) {
+        return _getCart(cartId).withdrawApproval[contributor];
+    }
+
+    function _approvalsNeeded(uint256 contributorCount) internal pure returns (uint256) {
+        if (contributorCount == 0) return 1;
+        return (contributorCount / 2) + 1;
     }
 
     function _getCart(bytes32 cartId) internal view returns (Cart storage cart) {
