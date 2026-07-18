@@ -29,7 +29,7 @@ contract CrowdCartTest is Test {
         assertTrue(a != bytes32(0));
     }
 
-    function test_createAndContributeAndWithdraw() public {
+    function test_withdrawRequiresMajorityApproval() public {
         bytes32 id = _create(10 ether, 1 days);
 
         vm.prank(alice);
@@ -37,14 +37,61 @@ contract CrowdCartTest is Test {
         vm.prank(bob);
         cart.contribute{value: 4 ether}(id);
 
-        uint256 beforeBal = organizer.balance;
         vm.prank(organizer);
-        cart.withdraw(id);
+        cart.requestWithdraw(id);
+
+        // 2 contributors → need 2 approvals
+        vm.prank(alice);
+        cart.approveWithdraw(id);
+
+        vm.prank(organizer);
+        vm.expectRevert(CrowdCart.ApprovalsNotMet.selector);
+        cart.executeWithdraw(id);
+
+        vm.prank(bob);
+        cart.approveWithdraw(id);
+
+        uint256 beforeBal = organizer.balance;
+        cart.executeWithdraw(id);
         assertEq(organizer.balance, beforeBal + 10 ether);
 
         CrowdCart.CartView memory view_ = cart.getCart(id);
         assertTrue(view_.withdrawn);
         assertEq(view_.raised, 10 ether);
+    }
+
+    function test_singleContributorCanSelfApprove() public {
+        bytes32 id = _create(5 ether, 1 days);
+        vm.prank(alice);
+        cart.contribute{value: 5 ether}(id);
+
+        vm.prank(organizer);
+        cart.requestWithdraw(id);
+        vm.prank(alice);
+        cart.approveWithdraw(id);
+        cart.executeWithdraw(id);
+
+        assertTrue(cart.getCart(id).withdrawn);
+    }
+
+    function test_nonOrganizerCannotRequestWithdraw() public {
+        bytes32 id = _create(5 ether, 1 days);
+        vm.prank(alice);
+        cart.contribute{value: 5 ether}(id);
+
+        vm.prank(alice);
+        vm.expectRevert(CrowdCart.NotOrganizer.selector);
+        cart.requestWithdraw(id);
+    }
+
+    function test_cannotRequestWithdrawUnderTarget() public {
+        bytes32 id = _create(10 ether, 1 days);
+        vm.prank(alice);
+        cart.contribute{value: 5 ether}(id);
+
+        vm.prank(organizer);
+        vm.expectRevert(CrowdCart.TargetNotMet.selector);
+        cart.requestWithdraw(id);
     }
 
     function test_refundAfterUnderfundedDeadline() public {
@@ -62,16 +109,6 @@ contract CrowdCartTest is Test {
         assertEq(cart.contributionOf(id, alice), 0);
     }
 
-    function test_cannotWithdrawUnderTarget() public {
-        bytes32 id = _create(10 ether, 1 days);
-        vm.prank(alice);
-        cart.contribute{value: 5 ether}(id);
-
-        vm.prank(organizer);
-        vm.expectRevert(CrowdCart.TargetNotMet.selector);
-        cart.withdraw(id);
-    }
-
     function test_cannotContributeAfterDeadline() public {
         bytes32 id = _create(10 ether, 1 days);
         vm.warp(block.timestamp + 1 days + 1);
@@ -79,16 +116,6 @@ contract CrowdCartTest is Test {
         vm.prank(alice);
         vm.expectRevert(CrowdCart.DeadlinePassed.selector);
         cart.contribute{value: 1 ether}(id);
-    }
-
-    function test_nonOrganizerCannotWithdraw() public {
-        bytes32 id = _create(5 ether, 1 days);
-        vm.prank(alice);
-        cart.contribute{value: 5 ether}(id);
-
-        vm.prank(alice);
-        vm.expectRevert(CrowdCart.NotOrganizer.selector);
-        cart.withdraw(id);
     }
 
     function test_openRefundsThenClaim() public {
