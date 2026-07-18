@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   title: "CrowdCart — pool MON for a shared buy",
   description:
     "Friends deposit toward a target. Organizer withdraws if funded; contributors refund if not.",
+  applicationName: "CrowdCart",
 };
 
 export default function RootLayout({
