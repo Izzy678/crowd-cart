@@ -11,8 +11,10 @@ import {
   crowdCartAbi,
   crowdCartAddress,
   isCrowdCartConfigured,
+  parseCartId,
   parseCartView,
   rememberCartId,
+  shortCartId,
 } from "@/lib/contracts";
 import {
   formatDeadline,
@@ -28,13 +30,7 @@ export default function CartPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const cartId = useMemo(() => {
-    try {
-      return BigInt(id);
-    } catch {
-      return null;
-    }
-  }, [id]);
+  const cartId = useMemo(() => parseCartId(id), [id]);
 
   const { address, isConnected } = useAccount();
   const [amount, setAmount] = useState("0.1");
@@ -89,7 +85,10 @@ export default function CartPage({
       <div className="workbench">
         <div className="panel">
           <h1 className="panel-title">Invalid cart</h1>
-          <p className="muted">That cart id is not a number.</p>
+          <p className="muted">
+            That share link id is invalid. Cart ids are unique 64-character hex
+            values.
+          </p>
         </div>
       </div>
     );
@@ -176,7 +175,7 @@ export default function CartPage({
   return (
     <div className="workbench">
       <div className="panel">
-        <p className="mono-label">Cart #{id}</p>
+        <p className="mono-label">Cart {shortCartId(id)}</p>
         <h1 className="panel-title">{title}</h1>
         <p className="muted" style={{ marginTop: 0 }}>
           Organizer {shortAddress(organizer)}

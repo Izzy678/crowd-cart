@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useReadContracts } from "wagmi";
 import {
   crowdCartAbi,
   crowdCartAddress,
   isCrowdCartConfigured,
   loadCartIds,
+  parseCartId,
   parseCartView,
+  shortCartId,
 } from "@/lib/contracts";
 import { weiToMon } from "@/lib/format";
 
@@ -19,15 +21,24 @@ export default function MinePage() {
     setIds(loadCartIds());
   }, []);
 
+  const contracts = useMemo(
+    () =>
+      ids
+        .map((id) => parseCartId(id))
+        .filter((id): id is NonNullable<typeof id> => id !== null)
+        .map((cartId) => ({
+          address: crowdCartAddress,
+          abi: crowdCartAbi,
+          functionName: "getCart" as const,
+          args: [cartId] as const,
+        })),
+    [ids],
+  );
+
   const { data, isLoading } = useReadContracts({
-    contracts: ids.map((id) => ({
-      address: crowdCartAddress,
-      abi: crowdCartAbi,
-      functionName: "getCart" as const,
-      args: [BigInt(id)] as const,
-    })),
+    contracts,
     query: {
-      enabled: ids.length > 0 && isCrowdCartConfigured(),
+      enabled: contracts.length > 0 && isCrowdCartConfigured(),
     },
   });
 
@@ -59,10 +70,10 @@ export default function MinePage() {
             return (
               <li key={id}>
                 <Link href={`/cart/${id}`}>
-                  <strong>{cart?.title ?? `Cart #${id}`}</strong>
+                  <strong>{cart?.title ?? `Cart ${shortCartId(id)}`}</strong>
                   <br />
                   <span className="mono-label">
-                    #{id}
+                    {shortCartId(id)}
                     {cart
                       ? ` · ${weiToMon(cart.raised)} / ${weiToMon(cart.target)} MON`
                       : ""}

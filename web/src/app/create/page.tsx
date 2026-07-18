@@ -39,9 +39,12 @@ export default function CreatePage() {
           topics: log.topics,
         });
         if (decoded.eventName === "CartCreated") {
-          const args = decoded.args as unknown as { cartId: bigint };
+          const args = decoded.args as unknown as { cartId: Hex };
+          const pathId = args.cartId.startsWith("0x")
+            ? args.cartId.slice(2)
+            : args.cartId;
           rememberCartId(args.cartId);
-          router.push(`/cart/${args.cartId}`);
+          router.push(`/cart/${pathId}`);
           return;
         }
       } catch {
