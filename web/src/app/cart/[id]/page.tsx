@@ -16,6 +16,7 @@ import {
   rememberCartId,
   shortCartId,
 } from "@/lib/contracts";
+import { ContributorTable } from "@/components/ContributorTable";
 import {
   formatDeadline,
   monToWei,
@@ -36,6 +37,7 @@ export default function CartPage({
   const [amount, setAmount] = useState("0.1");
   const [copied, setCopied] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (cartId !== null) rememberCartId(cartId);
@@ -87,6 +89,7 @@ export default function CartPage({
     refetchCart();
     refetchMine();
     refetchApproved();
+    setRefreshKey((k) => k + 1);
     reset();
   }, [isSuccess, refetchCart, refetchMine, refetchApproved, reset]);
 
@@ -262,6 +265,15 @@ export default function CartPage({
           </button>
         </div>
       </div>
+
+      <ContributorTable
+        cartId={cartId}
+        organizer={organizer}
+        raised={raised}
+        withdrawRequested={withdrawRequested}
+        connectedAddress={address}
+        refreshKey={refreshKey}
+      />
 
       {!withdrawn && !refundsOpen && !withdrawRequested && !pastDeadline && (
         <div className="panel">
