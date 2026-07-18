@@ -27,19 +27,19 @@ contract CrowdCart {
     }
 
     uint256 public cartCount;
-    mapping(uint256 => Cart) private carts;
+    mapping(bytes32 => Cart) private carts;
 
     event CartCreated(
-        uint256 indexed cartId,
+        bytes32 indexed cartId,
         address indexed organizer,
         uint256 target,
         uint256 deadline,
         string title
     );
-    event Contributed(uint256 indexed cartId, address indexed contributor, uint256 amount, uint256 raised);
-    event Withdrawn(uint256 indexed cartId, address indexed organizer, uint256 amount);
-    event RefundsOpened(uint256 indexed cartId);
-    event RefundClaimed(uint256 indexed cartId, address indexed contributor, uint256 amount);
+    event Contributed(bytes32 indexed cartId, address indexed contributor, uint256 amount, uint256 raised);
+    event Withdrawn(bytes32 indexed cartId, address indexed organizer, uint256 amount);
+    event RefundsOpened(bytes32 indexed cartId);
+    event RefundClaimed(bytes32 indexed cartId, address indexed contributor, uint256 amount);
 
     error InvalidTarget();
     error InvalidDeadline();
@@ -56,13 +56,17 @@ contract CrowdCart {
 
     function createCart(string calldata title, uint256 target, uint256 deadline)
         external
-        returns (uint256 cartId)
+        returns (bytes32 cartId)
     {
         if (bytes(title).length == 0) revert EmptyTitle();
         if (target == 0) revert InvalidTarget();
         if (deadline <= block.timestamp) revert InvalidDeadline();
 
-        cartId = cartCount++;
+        uint256 n = cartCount++;
+        cartId = keccak256(
+            abi.encodePacked(msg.sender, title, target, deadline, n, block.timestamp, block.prevrandao)
+        );
+
         Cart storage cart = carts[cartId];
         cart.organizer = msg.sender;
         cart.target = target;
@@ -72,7 +76,7 @@ contract CrowdCart {
         emit CartCreated(cartId, msg.sender, target, deadline, title);
     }
 
-    function contribute(uint256 cartId) external payable {
+    function contribute(bytes32 cartId) external payable {
         Cart storage cart = _getCart(cartId);
         if (msg.value == 0) revert ZeroContribution();
         if (cart.withdrawn || cart.refundsOpen) revert AlreadySettled();
@@ -84,7 +88,7 @@ contract CrowdCart {
         emit Contributed(cartId, msg.sender, msg.value, cart.raised);
     }
 
-    function withdraw(uint256 cartId) external {
+    function withdraw(bytes32 cartId) external {
         Cart storage cart = _getCart(cartId);
         if (msg.sender != cart.organizer) revert NotOrganizer();
         if (cart.withdrawn || cart.refundsOpen) revert AlreadySettled();
@@ -100,7 +104,7 @@ contract CrowdCart {
     }
 
     /// @notice Anyone may open refunds after an underfunded deadline.
-    function openRefunds(uint256 cartId) external {
+    function openRefunds(bytes32 cartId) external {
         Cart storage cart = _getCart(cartId);
         if (cart.withdrawn || cart.refundsOpen) revert AlreadySettled();
         if (block.timestamp <= cart.deadline || cart.raised >= cart.target) {
@@ -111,7 +115,7 @@ contract CrowdCart {
         emit RefundsOpened(cartId);
     }
 
-    function claimRefund(uint256 cartId) external {
+    function claimRefund(bytes32 cartId) external {
         Cart storage cart = _getCart(cartId);
 
         if (!cart.refundsOpen) {
@@ -134,7 +138,7 @@ contract CrowdCart {
         emit RefundClaimed(cartId, msg.sender, amount);
     }
 
-    function getCart(uint256 cartId) external view returns (CartView memory) {
+    function getCart(bytes32 cartId) external view returns (CartView memory) {
         Cart storage cart = _getCart(cartId);
         return CartView({
             organizer: cart.organizer,
@@ -147,12 +151,12 @@ contract CrowdCart {
         });
     }
 
-    function contributionOf(uint256 cartId, address contributor) external view returns (uint256) {
+    function contributionOf(bytes32 cartId, address contributor) external view returns (uint256) {
         return _getCart(cartId).contributions[contributor];
     }
 
-    function _getCart(uint256 cartId) internal view returns (Cart storage cart) {
-        if (cartId >= cartCount) revert CartNotFound();
+    function _getCart(bytes32 cartId) internal view returns (Cart storage cart) {
         cart = carts[cartId];
+        if (cart.organizer == address(0)) revert CartNotFound();
     }
 }
