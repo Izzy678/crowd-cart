@@ -8,8 +8,8 @@ export default function HomePage() {
         <h1>Stop chasing friends for their share.</h1>
         <p className="hero-lede">
           Open a cart, set a target and deadline, share the link. If you hit the
-          goal, the organizer takes the pot. If not, everyone gets their MON
-          back.
+          goal, contributors approve the pull — then the organizer gets the pot.
+          If not, everyone gets their MON back.
         </p>
         <div className="hero-cta">
           <Link href="/create" className="btn btn--pear btn--lg">
@@ -58,9 +58,10 @@ export default function HomePage() {
       <section className="stage band-coral">
         <div className="stage-inner">
           <p className="stage-num">4.0 · Settle</p>
-          <h2>Funded? Organizer withdraws. Missed? Claim refunds.</h2>
+          <h2>Funded? Contributors approve. Then the organizer gets the pot.</h2>
           <p>
-            Hit the target and the organizer pulls the full pot. Miss the
+            Hit the target and the organizer requests withdraw. A majority of
+            contributors must approve before the pot can leave escrow. Miss the
             deadline underfunded and contributors reclaim what they put in.
           </p>
           <p style={{ marginTop: "1.25rem" }}>

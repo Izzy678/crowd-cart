@@ -51,7 +51,7 @@ The Next.js app lives in **`web/`**, not the repo root. If you deploy the whole 
 1. Vercel → your project → **Settings** → **General** → **Root Directory**
 2. Set Root Directory to **`web`** → Save
 3. **Settings** → **Environment Variables** (Production):
-   - `NEXT_PUBLIC_CROWDCART_ADDRESS` = `0x...`
+   - `NEXT_PUBLIC_CROWDCART_ADDRESS` = `0x769B4d5de4488F873a7edfFAD3fFf9c469B17868`
    - `NEXT_PUBLIC_MONAD_RPC_URL` = `https://testnet-rpc.monad.xyz`
 4. **Deployments** → Redeploy (or push a new commit)
 
@@ -63,4 +63,5 @@ After that, `https://crowd-cart-psi.vercel.app` should load CrowdCart.
 2. Create a cart
 3. Share `/cart/[id]`
 4. Contribute from another wallet
-5. Withdraw (if funded) or claim refund (if deadline passed underfunded)
+5. Organizer **Request withdraw** → contributors **Approve** (majority) → **Execute withdraw**
+6. Or claim refund if the deadline passed underfunded
