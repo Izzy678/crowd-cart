@@ -34,6 +34,7 @@ contract CrowdCart {
         mapping(address => uint256) contributions;
         mapping(address => bool) isContributor;
         mapping(address => bool) withdrawApproval;
+        address[] contributorList;
     }
 
     uint256 public cartCount;
@@ -102,6 +103,7 @@ contract CrowdCart {
         if (!cart.isContributor[msg.sender]) {
             cart.isContributor[msg.sender] = true;
             cart.contributorCount += 1;
+            cart.contributorList.push(msg.sender);
         }
 
         cart.contributions[msg.sender] += msg.value;
@@ -207,6 +209,10 @@ contract CrowdCart {
 
     function contributionOf(bytes32 cartId, address contributor) external view returns (uint256) {
         return _getCart(cartId).contributions[contributor];
+    }
+
+    function getContributors(bytes32 cartId) external view returns (address[] memory) {
+        return _getCart(cartId).contributorList;
     }
 
     function hasApprovedWithdraw(bytes32 cartId, address contributor) external view returns (bool) {

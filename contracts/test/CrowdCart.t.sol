@@ -132,6 +132,22 @@ contract CrowdCartTest is Test {
         assertEq(bob.balance, before + 2 ether);
     }
 
+    function test_getContributorsListsUniqueAddresses() public {
+        bytes32 id = _create(10 ether, 1 days);
+        vm.prank(alice);
+        cart.contribute{value: 3 ether}(id);
+        vm.prank(bob);
+        cart.contribute{value: 2 ether}(id);
+        vm.prank(alice);
+        cart.contribute{value: 1 ether}(id);
+
+        address[] memory list = cart.getContributors(id);
+        assertEq(list.length, 2);
+        assertEq(list[0], alice);
+        assertEq(list[1], bob);
+        assertEq(cart.contributionOf(id, alice), 4 ether);
+    }
+
     function test_unknownCartReverts() public {
         vm.expectRevert(CrowdCart.CartNotFound.selector);
         cart.getCart(bytes32(uint256(1)));
