@@ -17,13 +17,20 @@ contract CrowdCartTest is Test {
         vm.deal(bob, 100 ether);
     }
 
-    function _create(uint256 target, uint256 duration) internal returns (uint256 id) {
+    function _create(uint256 target, uint256 duration) internal returns (bytes32 id) {
         vm.prank(organizer);
         id = cart.createCart("Shared vacuum", target, block.timestamp + duration);
     }
 
+    function test_createUsesUniqueIds() public {
+        bytes32 a = _create(1 ether, 1 days);
+        bytes32 b = _create(1 ether, 1 days);
+        assertTrue(a != b);
+        assertTrue(a != bytes32(0));
+    }
+
     function test_createAndContributeAndWithdraw() public {
-        uint256 id = _create(10 ether, 1 days);
+        bytes32 id = _create(10 ether, 1 days);
 
         vm.prank(alice);
         cart.contribute{value: 6 ether}(id);
@@ -41,7 +48,7 @@ contract CrowdCartTest is Test {
     }
 
     function test_refundAfterUnderfundedDeadline() public {
-        uint256 id = _create(10 ether, 1 days);
+        bytes32 id = _create(10 ether, 1 days);
 
         vm.prank(alice);
         cart.contribute{value: 3 ether}(id);
@@ -56,7 +63,7 @@ contract CrowdCartTest is Test {
     }
 
     function test_cannotWithdrawUnderTarget() public {
-        uint256 id = _create(10 ether, 1 days);
+        bytes32 id = _create(10 ether, 1 days);
         vm.prank(alice);
         cart.contribute{value: 5 ether}(id);
 
@@ -66,7 +73,7 @@ contract CrowdCartTest is Test {
     }
 
     function test_cannotContributeAfterDeadline() public {
-        uint256 id = _create(10 ether, 1 days);
+        bytes32 id = _create(10 ether, 1 days);
         vm.warp(block.timestamp + 1 days + 1);
 
         vm.prank(alice);
@@ -75,7 +82,7 @@ contract CrowdCartTest is Test {
     }
 
     function test_nonOrganizerCannotWithdraw() public {
-        uint256 id = _create(5 ether, 1 days);
+        bytes32 id = _create(5 ether, 1 days);
         vm.prank(alice);
         cart.contribute{value: 5 ether}(id);
 
@@ -85,7 +92,7 @@ contract CrowdCartTest is Test {
     }
 
     function test_openRefundsThenClaim() public {
-        uint256 id = _create(10 ether, 1 hours);
+        bytes32 id = _create(10 ether, 1 hours);
         vm.prank(bob);
         cart.contribute{value: 2 ether}(id);
 
@@ -96,5 +103,10 @@ contract CrowdCartTest is Test {
         vm.prank(bob);
         cart.claimRefund(id);
         assertEq(bob.balance, before + 2 ether);
+    }
+
+    function test_unknownCartReverts() public {
+        vm.expectRevert(CrowdCart.CartNotFound.selector);
+        cart.getCart(bytes32(uint256(1)));
     }
 }
